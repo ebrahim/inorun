@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # vim: set fileencoding=utf-8 ts=2 sw=2 expandtab :
 #
-# Copyright (c) 2007-2008 Benedikt Böhm
+# Copyright (c) 2007-2008 Benedikt Böhm <hollow@gentoo.org>
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ from syslog import *
 from pyinotify import *
 
 __author__ = "Benedikt Böhm"
-__copyright__ = "Copyright (c) 2007-2008 Benedikt Böhm"
+__copyright__ = "Copyright (c) 2007-2008 Benedikt Böhm <hollow@gentoo.org>"
 __version__ = 0,2
 
 OPTION_LIST = [
