@@ -32,5 +32,8 @@ rnodes = [
 # realtime side of things)
 #edelay = 10
 
+# rsync log file for updates
+#logfile = /var/log/inosync.log
+
 # rsync binary path
 #rsync = "/usr/bin/rsync"

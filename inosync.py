@@ -68,6 +68,8 @@ class RsyncEvent(ProcessEvent):
       return
     args = [config.rsync, "-ltrp", "--delete"]
     args.append("--bwlimit=%s" % config.rspeed)
+    if config.logfile:
+      args.append("--log-file=%s" % config.logfile)
     if "excludes" in dir(config):
       for exclude in config.excludes:
         args.append("--exclude=%s" % exclude)
@@ -159,6 +161,9 @@ def load_config(filename):
     config.edelay = 10
   if config.edelay < 1:
     raise RuntimeError, "event delay needs to be greater than 1"
+
+  if not "logfile" in dir(config):
+    config.logfile = None
 
   if not "rsync" in dir(config):
     config.rsync = "/usr/bin/rsync"
