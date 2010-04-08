@@ -9,7 +9,7 @@ from pyinotify import *
 
 __author__ = "Benedikt Böhm"
 __copyright__ = "Copyright (c) 2007-2008 Benedikt Böhm <bb@xnull.de>"
-__version__ = 0,2,1
+__version__ = 0,2,2
 
 OPTION_LIST = [
   make_option(
@@ -34,20 +34,6 @@ OPTION_LIST = [
       help = "print debugging information"),
 ]
 
-ALL_EVENTS = [
-    "IN_ACCESS",
-    "IN_ATTRIB",
-    "IN_CLOSE_WRITE",
-    "IN_CLOSE_NOWRITE",
-    "IN_CREATE",
-    "IN_DELETE",
-    "IN_DELETE_SELF",
-    "IN_MODIFY",
-    "IN_MOVED_FROM",
-    "IN_MOVED_TO",
-    "IN_OPEN"
-]
-
 DEFAULT_EVENTS = [
     "IN_CLOSE_WRITE",
     "IN_CREATE",
@@ -58,14 +44,11 @@ DEFAULT_EVENTS = [
 
 class RsyncEvent(ProcessEvent):
   pretend = None
-  dirty = True
 
   def __init__(self, pretend=False):
     self.pretend = pretend
 
   def sync(self):
-    if not self.dirty:
-      return
     args = [config.rsync, "-ltrp", "--delete"]
     args.append("--bwlimit=%s" % config.rspeed)
     if config.logfile:
@@ -84,16 +67,11 @@ class RsyncEvent(ProcessEvent):
         proc = os.popen(cmd % node)
         for line in proc:
           syslog(LOG_DEBUG, "[rsync] %s" % line.strip())
-    self.dirty = False
 
   def process_default(self, event):
     syslog(LOG_DEBUG, "caught %s on %s" % \
-        (event.event_name, os.path.join(event.path, event.name)))
-    if not event.event_name in config.emask:
-      syslog(LOG_DEBUG, "ignoring %s on %s" % \
-          (event.event_name, os.path.join(event.path, event.name)))
-      return
-    self.dirty = True
+        (event.maskname, os.path.join(event.path, event.name)))
+    self.sync()
 
 def daemonize():
   try:
@@ -154,13 +132,13 @@ def load_config(filename):
   if not "emask" in dir(config):
     config.emask = DEFAULT_EVENTS
   for event in config.emask:
-    if not event in ALL_EVENTS:
+    if not event in EventsCodes.ALL_FLAGS.keys():
       raise RuntimeError, "invalid inotify event: %s" % event
 
   if not "edelay" in dir(config):
     config.edelay = 10
-  if config.edelay < 1:
-    raise RuntimeError, "event delay needs to be greater than 1"
+  if config.edelay < 0:
+    raise RuntimeError, "event delay needs to be greater or equal to 0"
 
   if not "logfile" in dir(config):
     config.logfile = None
@@ -196,26 +174,16 @@ def main():
 
   wm = WatchManager()
   ev = RsyncEvent(options.pretend)
-  notifier = Notifier(wm, ev)
-  wds = wm.add_watch(config.wpath, EventsCodes.ALL_EVENTS,
-      rec = True, auto_add = True)
+  notifier = AsyncNotifier(wm, ev, read_freq=config.edelay)
+  mask = reduce(lambda x,y: x|y, [EventsCodes.ALL_FLAGS[e] for e in config.emask])
+  wds = wm.add_watch(config.wpath, mask, rec=True, auto_add=True)
 
   syslog(LOG_DEBUG, "starting initial synchronization on %s" % config.wpath)
   ev.sync()
   syslog(LOG_DEBUG, "initial synchronization on %s done" % config.wpath)
 
   syslog("resuming normal operations on %s" % config.wpath)
-  while True:
-    try:
-      notifier.process_events()
-      if notifier.check_events(0):
-        notifier.read_events()
-      ev.sync()
-      sleep(config.edelay)
-    except KeyboardInterrupt:
-      notifier.stop()
-      break
-
+  asyncore.loop()
   sys.exit(0)
 
 if __name__ == "__main__":

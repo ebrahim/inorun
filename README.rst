@@ -3,7 +3,7 @@ inosync
 =======
 
 :Author: `Benedikt Böhm <bb@xnull.de>`_
-:Version: 0.2.1
+:Version: 0.2.2
 :Web: http://bb.xnull.de/projects/inosync/
 :Source: http://git.xnull.de/gitweb/?p=inosync.git (also on `github <http://github.com/hollow/inosync>`_)
 :Download: http://bb.xnull.de/projects/inosync/dist/
@@ -104,8 +104,8 @@ Requirements
 To use this script you need the following software installed on your system:
 
 - linux-2.6.13 or later
-- Python-2.4 or later
-- pyinotify-0.7.0 or later
+- Python-2.5 or later
+- pyinotify-0.8.7 or later
 
 
 Related Software
