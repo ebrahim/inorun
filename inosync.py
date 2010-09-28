@@ -9,7 +9,7 @@ from pyinotify import *
 
 __author__ = "Benedikt Böhm"
 __copyright__ = "Copyright (c) 2007-2008 Benedikt Böhm <bb@xnull.de>"
-__version__ = 0,2,2
+__version__ = 0,2,3
 
 OPTION_LIST = [
   make_option(

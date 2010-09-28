@@ -3,7 +3,7 @@ inosync
 =======
 
 :Author: `Benedikt Böhm <bb@xnull.de>`_
-:Version: 0.2.2
+:Version: 0.2.3
 :Web: http://bb.xnull.de/projects/inosync/
 :Source: http://git.xnull.de/cgit/inosync/ (also on `github <http://github.com/hollow/inosync>`_)
 :Download: http://bb.xnull.de/projects/inosync/dist/
