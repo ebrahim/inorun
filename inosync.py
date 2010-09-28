@@ -53,9 +53,9 @@ class RsyncEvent(ProcessEvent):
     args.append("--bwlimit=%s" % config.rspeed)
     if config.logfile:
       args.append("--log-file=%s" % config.logfile)
-    if "excludes" in dir(config):
-      for exclude in config.excludes:
-        args.append("--exclude=%s" % exclude)
+    if "rexcludes" in dir(config):
+      for rexclude in config.rexcludes:
+        args.append("--exclude=%s" % rexclude)
     args.append(config.wpath)
     args.append("%s")
     cmd = " ".join(args)
