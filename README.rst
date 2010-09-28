@@ -4,9 +4,9 @@ inosync
 
 :Author: `Benedikt Böhm <bb@xnull.de>`_
 :Version: 0.2.3
-:Web: http://bb.xnull.de/projects/inosync/
-:Source: http://git.xnull.de/cgit/inosync/ (also on `github <http://github.com/hollow/inosync>`_)
-:Download: http://bb.xnull.de/projects/inosync/dist/
+:Web: http://github.com/hollow/inosync
+:Git: ``git clone https://github.com/hollow/inosync.git``
+:Download: http://github.com/hollow/inosync/downloads
 
 Rationale
 =========
