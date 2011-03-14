@@ -1,39 +1,42 @@
 =======
-inosync
+inorun
 =======
 
-:Author: `Benedikt Böhm <bb@xnull.de>`_
-:Version: 0.2.3
-:Web: http://github.com/hollow/inosync
-:Git: ``git clone https://github.com/hollow/inosync.git``
-:Download: http://github.com/hollow/inosync/downloads
+:Authors: - `Benedikt Böhm <bb@xnull.de>`
+          - `Mohammad Ebrahim Mohammadi Panah <ebrahim@mohammadi.ir>`
+:Version: 0.1.0
+:Web: http://github.com/ebrahim/inorun
+:Git: ``git clone https://github.com/ebrahim/inorun.git``
+:Download: http://github.com/ebrahim/inorun/downloads
 
 Rationale
 =========
 
-System administrators have relied on cron+rsync for years to constantly
-synchronize files and directories to remote machines. However, this technique
-has a huge disadvantage for content distribution with near real-time
-requirements, e.g. podcasts and blogging.
+Wanna run some command on some file system event? inorun is for you!
 
-It is not feasible to let authors wait for their content to get synchronized
-every x hours with regard to the enormous pace of articles and
-podcasts nowadays.
-
-The inosync daemon leverages the inotify service available in recent linux
-kernels to monitor and synchronize changes within directories to remote nodes.
+The inorun daemon leverages the inotify service available in recent linux
+kernels to monitor file system events and run your desired command on them.
 
 
 Usage
 =====
 
+inorun calls your desired commands on your desired events with three arguments:
+
+1. Remote address
+2. Watched path
+3. Relative path to the file under watched path on which the event has occurred
+
+inorun comes with an init script named inorun which runs an inorun daemon using
+the default config file located at ``/etc/inorun/default.py``.
+
 ::
 
-  inosync [OPTIONS]
+  inorun [OPTIONS]
 
     -c FILE     load configuration from FILE
     -d          daemonize (fork to background)
-    -p          do not actually call rsync
+    -p          do not actually call rrun
     -v          print debugging information
     --version   show program's version number and exit
     -h, --help  show this help message and exit
@@ -42,61 +45,46 @@ Usage
 Configuration
 =============
 
-Configuration files are simple python scripts, merely declaring necessary
-variables. Below is an example configuration to synchronize ``/var/www``
-except ``/var/www/localhost`` to 3 remote locations:
+Remeber to increase maximum allowed user watched if you're going to watch huge
+directory trees:
+
 ::
 
-  # directory that should be watched for changes
-  wpath = "/var/www/"
+    # sysctl -w fs.inotify.max_user_watches=262144
 
-  # exclude list for rsync
-  rexcludes = [
-  	"/localhost",
-  ]
 
-  # common remote path
-  rpath = "/var/www/"
+This is an example config file for syncing an Ubuntu repository to 10.0.0.2:
 
-  # remote locations in rsync syntax
-  rnodes = [
-  	"a.mirror.com:" + rpath,
-  	"b.mirror.com:" + rpath,
-  	"c.mirror.com:" + rpath,
-  ]
+::
 
-  # limit remote sync speed (in KB/s, 0 = no limit)
-  #rspeed = 0
+    # directory that should be watched for changes
+    wpath = "/repo/ubuntu"
 
-  # event mask (only sync on these events)
-  #emask = [
-  #	"IN_CLOSE_WRITE",
-  #	"IN_CREATE",
-  #	"IN_DELETE",
-  #	"IN_MOVED_FROM",
-  #	"IN_MOVED_TO",
-  #]
+    rnodes = [ "10.0.0.2" ]
 
-  # event delay in seconds (this prevents huge
-  # amounts of syncs, but dicreases the 
-  # realtime side of things)
-  #edelay = 10
+    # event mask (only sync on these events)
+    emask = {
+        "IN_CLOSE_WRITE": "/usr/local/bin/sync-copy",
+        "IN_CREATE":      "/usr/local/bin/sync-copy",
+        "IN_MOVED_TO":    "/usr/local/bin/sync-copy",
+        "IN_DELETE":      "/usr/local/bin/sync-remove",
+        "IN_MOVED_FROM":  "/usr/local/bin/sync-remove",
+    }
 
-  # rsync binary path
-  #rsync = "/usr/bin/rsync"
+    # event delay in seconds (prevents huge amounts of syncs, but dicreases the
+    # realtime side of things)
+    # Default: 1
+    edelay = 10
+
+    # initial event to raise virtually on watched directory, maybe to start an
+    # initial full copy
+    #initevent = "IN_CREATE"
 
 
 Bugs
 ====
 
-There are no known bugs currently, however, due to the design of inosync, there
-are several shortcomings:
-
-- inosync cannot parse rsync excludes and therefore calls rsync on changes in
-  excluded directories as well. (`of course rsync still excludes these
-  directories`)
-- It is easily possible to flood the daemon with huge amounts of change events,
-  potentially resulting in enormous bandwidth and connection usage.
+inorun has many bugs, none of which I know at the moment. Report them please.
 
 Requirements
 ============
@@ -111,10 +99,4 @@ To use this script you need the following software installed on your system:
 Related Software
 ================
 
-inosync is similar to `lsyncd <http://www.pri.univie.ac.at/index.php?c=show&CEWebS_what=Lsyncd>`_,
-but uses a lot less (nasty) magic to parse rsync excludes and shared www
-directories. Additionally inosync has no limitation on filename size and number
-of active watchpoints.
-
-A comparision to other approaches like DRBD, incron and FUSE can be found at
-lsyncds project page, mentioned above.
+inorun is based on `inosync <https://github.com/hollow/inosync>`_.

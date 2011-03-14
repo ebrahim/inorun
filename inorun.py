@@ -7,26 +7,27 @@ from time import sleep
 from syslog import *
 from pyinotify import *
 
-__author__ = "Benedikt Böhm"
-__copyright__ = "Copyright (c) 2007-2008 Benedikt Böhm <bb@xnull.de>"
-__version__ = 0,2,3
+__author__ = "Benedikt Böhm, Mohammad Ebrahim Mohammadi Panah"
+__copyright__ = "Copyright (c) 2007-2008 Benedikt Böhm <bb@xnull.de>, \
+Copyright (c) 2011 Mohammad Ebrahim Mohammadi Panah <ebrahim@mohammadi.ir>"
+__version__ = 0,1,0
 
 OPTION_LIST = [
   make_option(
       "-c", dest = "config",
-      default = "/etc/inosync/default.py",
+      default = "/etc/inorun/default.py",
       metavar = "FILE",
       help = "load configuration from FILE"),
   make_option(
       "-d", dest = "daemonize",
       action = "store_true",
       default = False,
-      help = "daemonize %prog"),
+      help = "daemonize inorun"),
   make_option(
       "-p", dest = "pretend",
       action = "store_true",
       default = False,
-      help = "do not actually call rsync"),
+      help = "do not actually run programs"),
   make_option(
       "-v", dest = "verbose",
       action = "store_true",
@@ -34,13 +35,13 @@ OPTION_LIST = [
       help = "print debugging information"),
 ]
 
-DEFAULT_EVENTS = [
-    "IN_CLOSE_WRITE",
-    "IN_CREATE",
-    "IN_DELETE",
-    "IN_MOVED_FROM",
-    "IN_MOVED_TO"
-]
+DEFAULT_EVENTS = {
+    "IN_CLOSE_WRITE": "/bin/true",
+    "IN_CREATE":      "/bin/true",
+    "IN_DELETE":      "/bin/true",
+    "IN_MOVED_FROM":  "/bin/true",
+    "IN_MOVED_TO":    "/bin/true"
+}
 
 class RsyncEvent(ProcessEvent):
   pretend = None
@@ -48,16 +49,16 @@ class RsyncEvent(ProcessEvent):
   def __init__(self, pretend=False):
     self.pretend = pretend
 
-  def sync(self):
-    args = [config.rsync, "-ltrp", "--delete"]
-    args.append("--bwlimit=%s" % config.rspeed)
-    if config.logfile:
-      args.append("--log-file=%s" % config.logfile)
-    if "rexcludes" in dir(config):
-      for rexclude in config.rexcludes:
-        args.append("--exclude=%s" % rexclude)
-    args.append(config.wpath)
+  def sync(self, pathname, maskname):
+    args = [config.emask[maskname]]
+    #if config.logfile:
+    #  args.append("--log-file=%s" % config.logfile)
+    #if "excludes" in dir(config):
+    #  for exclude in config.excludes:
+    #    args.append("--exclude=%s" % exclude)
     args.append("%s")
+    args.append(config.wpath)
+    args.append(pathname[len(config.wpath)+1:])
     cmd = " ".join(args)
     for node in config.rnodes:
       if self.pretend:
@@ -66,12 +67,12 @@ class RsyncEvent(ProcessEvent):
         syslog(LOG_DEBUG, "executing %s" % (cmd % node))
         proc = os.popen(cmd % node)
         for line in proc:
-          syslog(LOG_DEBUG, "[rsync] %s" % line.strip())
+          syslog(LOG_DEBUG, "[inorun] %s" % line.strip())
 
   def process_default(self, event):
     syslog(LOG_DEBUG, "caught %s on %s" % \
         (event.maskname, os.path.join(event.path, event.name)))
-    self.sync()
+    self.sync(event.pathname, event.maskname)
 
 def daemonize():
   try:
@@ -122,12 +123,10 @@ def load_config(filename):
     raise RuntimeError, "watch path does not exist: %s" % config.wpath
   if not os.path.isabs(config.wpath):
     config.wpath = os.path.abspath(config.wpath)
+  config.wpath = os.path.normpath(config.wpath)
 
   if not "rnodes" in dir(config) or len(config.rnodes) < 1:
     raise RuntimeError, "no remote nodes given"
-
-  if not "rspeed" in dir(config) or config.rspeed < 0:
-    config.rspeed = 0
 
   if not "emask" in dir(config):
     config.emask = DEFAULT_EVENTS
@@ -136,23 +135,27 @@ def load_config(filename):
       raise RuntimeError, "invalid inotify event: %s" % event
 
   if not "edelay" in dir(config):
-    config.edelay = 10
+    config.edelay = 1
   if config.edelay < 0:
     raise RuntimeError, "event delay needs to be greater or equal to 0"
 
   if not "logfile" in dir(config):
     config.logfile = None
 
-  if not "rsync" in dir(config):
-    config.rsync = "/usr/bin/rsync"
-  if not os.path.isabs(config.rsync):
-    raise RuntimeError, "rsync path needs to be absolute"
-  if not os.path.isfile(config.rsync):
-    raise RuntimeError, "rsync binary does not exist: %s" % config.rsync
+  for program in config.emask.values():
+    if not os.path.isabs(program):
+      raise RuntimeError, "program path needs to be absolute"
+    if not os.path.isfile(program):
+      raise RuntimeError, "program binary does not exist: %s" % program
+
+  if not "initevent" in dir(config):
+    config.initevent = None
+  elif not config.initevent in conf.emask.keys():
+    raise RuntimeError, "invalid inotify event set as initevent: %s" % event
 
 def main():
   version = ".".join(map(str, __version__))
-  parser = OptionParser(option_list=OPTION_LIST,version="%prog " + version)
+  parser = OptionParser(option_list=OPTION_LIST,version="inorun " + version)
   (options, args) = parser.parse_args()
 
   if len(args) > 0:
@@ -161,7 +164,7 @@ def main():
   logopt = LOG_PID|LOG_CONS
   if not options.daemonize:
     logopt |= LOG_PERROR
-  openlog("inosync", logopt, LOG_DAEMON)
+  openlog("inorun", logopt, LOG_DAEMON)
   if options.verbose:
     setlogmask(LOG_UPTO(LOG_DEBUG))
   else:
@@ -178,12 +181,16 @@ def main():
   mask = reduce(lambda x,y: x|y, [EventsCodes.ALL_FLAGS[e] for e in config.emask])
   wds = wm.add_watch(config.wpath, mask, rec=True, auto_add=True)
 
-  syslog(LOG_DEBUG, "starting initial synchronization on %s" % config.wpath)
-  ev.sync()
-  syslog(LOG_DEBUG, "initial synchronization on %s done" % config.wpath)
+  if config.initevent:
+    syslog(LOG_DEBUG, "starting initial synchronization on %s" % config.wpath)
+    ev.sync(config.wpath, config.initevent)
+    syslog(LOG_DEBUG, "initial synchronization on %s done" % config.wpath)
 
   syslog("resuming normal operations on %s" % config.wpath)
-  asyncore.loop()
+  try:
+    asyncore.loop()
+  except KeyboardInterrupt:
+    syslog("exiting")
   sys.exit(0)
 
 if __name__ == "__main__":
