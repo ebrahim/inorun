@@ -3,11 +3,12 @@ inorun
 =======
 
 :Authors: - `Benedikt Böhm <bb@xnull.de>`
-          - `Mohammad Ebrahim Mohammadi Panah <ebrahim@mohammadi.ir>`
+          - `Ebrahim Mohammadi <ebrahim@mohammadi.ir>`
 :Version: 0.1.0
-:Web: http://github.com/ebrahim/inorun
+:Web: http://code.ebrahim.ir/inorun
+:Mercurial: ``hg clone http://bitbucket.org/ebrahim/inorun``
 :Git: ``git clone https://github.com/ebrahim/inorun.git``
-:Download: http://github.com/ebrahim/inorun/downloads
+:Download: http://code.ebrahim.ir/inorun/downloads
 
 Rationale
 =========
